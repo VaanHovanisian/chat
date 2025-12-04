@@ -2,12 +2,14 @@
   "name": "chat",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "biome check",
-    "format": "biome format --write"
+    "format": "biome format --write",
+    "socket": "ts-node src/socket-server.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.1.0",
