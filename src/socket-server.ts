@@ -1,29 +1,49 @@
+import { createServer } from "node:http";
+import next from "next";
 import { Server } from "socket.io";
-import { prisma } from "./prisma/prisma-client";
+import { prisma } from "./prisma/prismaclient";
 
-export const io = new Server(3001,{
-  cors: {
-    origin: "*",
-  }
-})
+const dev = process.env.NODE_ENV !== "production";
+const hostname = "localhost";
+const port = parseInt(process.env.PORT || "3000", 10);
 
-io.on("connection", (socket) => {
-  console.log("a user connected:", socket.id);
+const app = next({ dev, hostname, port });
+const handler = app.getRequestHandler();
 
-  socket.on("message", async (msg) => {
-    console.log("message received:", msg);   
-    const chat = await prisma.chat.create({
-      data: {
-        message: msg,
-      },
-    });
-    io.emit("message", chat);
-  }); 
+app.prepare().then(() => {
+  const httpServer = createServer((req, res) => handler(req, res));
 
-  socket.on("disconnect", () => {
-    console.log("user disconnected:", socket.id);
+  const io = new Server(httpServer, {
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"],
+    },
   });
 
-})
+  io.on("connection", (socket) => {
+    console.log("socket connected", socket.id);
 
-console.log("run server http://localhost:3000");
+    socket.on("message", async (text) => {
+      const msg = {
+        id: Date.now(),
+        text,
+      };
+
+      await prisma.chat.create({
+        data: {
+          message: text,
+        },
+      });
+
+      io.emit("message", msg);
+    });
+
+    socket.on("disconnect", (reason) => {
+      console.log("socket disconnected", socket.id, reason);
+    });
+  });
+
+  httpServer.listen(port, () => {
+    console.log(`> Ready on http://${hostname}:${port}`);
+  });
+});
