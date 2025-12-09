@@ -1,56 +1,52 @@
 /** biome-ignore-all lint/a11y/useButtonType: <explanation> */
 "use client";
+import { useEffect, useState, useRef } from "react";
+import { io, Socket } from "socket.io-client";
 
-import io from "socket.io-client";
-import { useEffect, useState } from "react";
+let socket: Socket;
 
-export const Chat = () => {
-  const [socket, setSocket] = useState<any>(null);
+export  function Chat({ userId }: { userId: string }) {
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState("");
+  const ref = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const s = io("http://localhost:3000");
-    setSocket(s);
+    socket = io("http://localhost:3000");
+    socket.emit("join", { userId });
 
-    s.on("message", (msg: any) => {
-      setMessages((prev) => [...prev, msg]);
+    socket.on("newMessage", (msg) => {
+      setMessages((s) => [...s, msg]);
+      ref.current?.scrollIntoView({ behavior: "smooth" });
     });
 
-    return () => {
-      s.disconnect();
-    };
-  }, []);
+    // initial fetch of last 50 messages
+    fetch("/api/chat/history")
+      .then((r) => r.json())
+      .then((data) => setMessages(data));
 
-  const sendMessage = () => {
+    return () => {
+      socket.disconnect();
+    };
+  }, [userId]);
+
+  const send = async () => {
     if (!text.trim()) return;
-    socket.emit("message", text);
+    socket.emit("sendMessage", { text, userId });
     setText("");
   };
 
   return (
-    <div className="p-6 max-w-md mx-auto">
-      <h1 className="text-xl font-bold mb-4">Socket.IO Chat</h1>
-
-      <div className="border rounded h-64 p-2 overflow-y-auto mb-4">
-        {messages.map((msg) => (
-          <div key={msg.id}>{msg.text}</div>
+    <div>
+      <div style={{ height: 400, overflow: "auto" }}>
+        {messages.map((m) => (
+          <div key={m.id}>
+            <b>{m.user?.name ?? m.userId}:</b> {m.text}
+          </div>
         ))}
+        <div ref={ref} />
       </div>
-
-      <div className="flex gap-2">
-        <input
-          className="border p-2 rounded flex-1"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <button
-          className="bg-blue-600 text-white px-4 rounded"
-          onClick={sendMessage}
-        >
-          Send
-        </button>
-      </div>
+      <input value={text} onChange={(e) => setText(e.target.value)} />
+      <button onClick={send}>Send</button>
     </div>
   );
-};
+}
