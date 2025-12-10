@@ -1,13 +1,16 @@
 // app/chat/page.tsx  (если ты используешь app router)
+/** biome-ignore-all lint/correctness/useExhaustiveDependencies: <explanation> */
 /** biome-ignore-all lint/a11y/useButtonType: <explanation> */
 "use client";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useSession } from "next-auth/react";
 import { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 
-const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000";
+const SOCKET_URL =
+  process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000";
 
 type Message = {
   id: string;
@@ -22,8 +25,9 @@ export default function ChatPage() {
   const [socket, setSocket] = useState<any>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [text, setText] = useState("");
-  const chatId = "1"; // заменяй на реальный
-  const userId = "1"; // возьми из сессии/NextAuth
+  const { data } = useSession();
+  const chatId = data?.user?.chatId || "1"; // заменяй на реальный
+  const userId = data?.user?.id; // возьми из сессии/NextAuth
 
   useEffect(() => {
     const s = io(SOCKET_URL);
@@ -39,7 +43,7 @@ export default function ChatPage() {
     });
 
     s.on("message", (msg: Message) => {
-      setMessages(prev => [...prev, msg]);
+      setMessages((prev) => [...prev, msg]);
     });
 
     s.on("typing", ({ userId: uid, isTyping }: any) => {
@@ -61,11 +65,20 @@ export default function ChatPage() {
   return (
     <div style={{ padding: 20 }}>
       <h1>Chat</h1>
-      <div style={{ border: "1px solid #ccc", height: 400, overflow: "auto", padding: 10 }}>
-        {messages.map(m => (
+      <div
+        style={{
+          border: "1px solid #ccc",
+          height: 400,
+          overflow: "auto",
+          padding: 10,
+        }}
+      >
+        {messages.map((m) => (
           <div key={m.id} style={{ marginBottom: 8 }}>
             <b>{m.user?.name ?? m.userId}</b>: {m.text}
-            <div style={{ fontSize: 10, color: "#666" }}>{new Date(m.createdAt).toLocaleString()}</div>
+            <div style={{ fontSize: 10, color: "#666" }}>
+              {new Date(m.createdAt).toLocaleString()}
+            </div>
           </div>
         ))}
       </div>
@@ -75,9 +88,15 @@ export default function ChatPage() {
           value={text}
           onChange={(e) => {
             setText(e.target.value);
-            socket?.emit("typing", { chatId, userId, isTyping: e.target.value.length > 0 });
+            socket?.emit("typing", {
+              chatId,
+              userId,
+              isTyping: e.target.value.length > 0,
+            });
           }}
-          onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") send();
+          }}
           placeholder="Напиши сообщение..."
           style={{ width: "70%" }}
         />

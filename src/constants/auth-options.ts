@@ -37,7 +37,7 @@ export const authOptions: AuthOptions = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.id = Number(user.id);
+        token.id = user.id;
         token.email = user.email;
         token.name = user.name;
         return token;
@@ -48,11 +48,19 @@ export const authOptions: AuthOptions = {
 
       const dbUser = await prisma.user.findUnique({
         where: { email: token.email },
+        include: {
+          messages: {
+            include: {
+              chat: true,
+            },
+          },
+        },
       });
 
       if (dbUser) {
         token.id = dbUser.id;
         token.name = dbUser.name;
+        token.chatId = dbUser.messages.map((msg) => msg.chatId)[0];
       }
 
       return token;
@@ -103,6 +111,7 @@ export const authOptions: AuthOptions = {
     async session({ session, token }) {
       if (token) {
         session.user.id = token.id as string;
+        session.user.chatId = token.chatId as string;
       }
       return session;
     },

@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
+import { hashSync } from "bcrypt";
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 const create = async () => {
@@ -7,16 +8,9 @@ const create = async () => {
     data: [
       {
         id: "1",
-        name: "Vaan Hovanisyan",
-        email: "vaa.hovanisyan@gmail.com",
-        password: "123",
-        verified: new Date(),
-      },
-      {
-        id: "2",
         name: "Bob Jigarxanyan",
         email: "jan@gmail.com",
-        password: "123",
+        password: hashSync("123", 10),
         verified: new Date(),
       },
     ],
